@@ -18,6 +18,7 @@ import {
   InstancedBufferAttribute,
   DataTexture,
   FloatType,
+  HalfFloatType,
   NearestFilter,
   TextureLoader,
   Matrix4,
@@ -222,7 +223,7 @@ img.addEventListener("load", async (e) => {
   }
   colorTexture.needsUpdate = true;
 });
-img.src = "./assets/logo.png";
+img.src = "./assets/taip.png";
 
 const video = document.createElement("video");
 const videoTexture = new VideoTexture(video);
@@ -301,7 +302,7 @@ const pData = new Float32Array(4 * size);
 const pExtraData = new Float32Array(4 * size);
 
 async function initPositions() {
-  // const model = await loadModel("../assets/bunny.obj");
+  const model = await loadModel("../assets/bunny.obj");
 
   // const points = pointsOnSphere(size);
   //points.forEach(p => p.multiplyScalar(1));
@@ -309,10 +310,8 @@ async function initPositions() {
   // const pointsGeometry = new TorusKnotGeometry(0.5, 0.125, 100, 18);
   // const pointsGeometry = new BoxGeometry(1, 1, 1);
   // const pointsGeometry = new IcosahedronGeometry(1, 3);
-  // const pointsGeometry = new Geometry()
-  //   .fromBufferGeometry(model.children[0].geometry)
-  //   .scale(10, 10, 10)
-  //   .center();
+  // const pointsGeometry = model.children[0].geometry;
+  // pointsGeometry.scale(10, 10, 10).center();
   const points = randomPointsInGeometry(pointsGeometry, size);
 
   const e = 0.1; // * tw;
@@ -325,7 +324,7 @@ async function initPositions() {
     data[ptr] = p.x; // x
     data[ptr + 1] = p.y; // y
     data[ptr + 2] = p.z; // z
-    data[ptr + 3] = Maf.randomInRange(0, 100); // life
+    data[ptr + 3] = 0; //Maf.randomInRange(0, 100); // life
 
     pData[ptr] = Maf.randomInRange(1, 2); // speed
     pData[ptr + 1] = Maf.randomInRange(0.1, 1.5); // size
@@ -405,16 +404,11 @@ const extraParticlesShader = new RawShaderMaterial({
   glslVersion: GLSL3,
 });
 
-const extraParticlesPass = new ShaderPass(
-  extraParticlesShader,
-  { type, minFilter: NearestFilter, magFilter: NearestFilter }
-  // RGBAFormat,
-  // type,
-  // NearestFilter,
-  // NearestFilter,
-  // ClampToEdgeWrapping,
-  // ClampToEdgeWrapping
-);
+const extraParticlesPass = new ShaderPass(extraParticlesShader, {
+  type,
+  minFilter: NearestFilter,
+  magFilter: NearestFilter,
+});
 extraParticlesPass.setSize(tw, th);
 helper.attach(extraParticlesPass.fbo, "extra p");
 
@@ -428,13 +422,10 @@ const finalShader = new RawShaderMaterial({
   fragmentShader: finalFragmentShader,
   glslVersion: GLSL3,
 });
-const finalPass = new ShaderPass(
-  finalShader
-  // RGBAFormat,
-  // UnsignedByteType,
-  // NearestFilter,
-  // NearestFilter
-);
+const finalPass = new ShaderPass(finalShader, {
+  minFilter: NearestFilter,
+  magFilter: NearestFilter,
+});
 finalPass.setSize(1, 1);
 helper.attach(finalPass.fbo, "final");
 
@@ -704,10 +695,7 @@ function render() {
     if (params.usePost) {
       post.render(renderer, scene, camera);
     } else {
-      renderer.setRenderTarget(colorFBO);
       renderer.render(scene, camera);
-      renderer.setRenderTarget(null);
-      finalPass.render(renderer, true);
     }
 
     helper.update();

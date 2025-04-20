@@ -7,6 +7,7 @@ import {
   ClampToEdgeWrapping,
   GLSL3,
   FloatType,
+  NearestFilter,
 } from "../third_party/three.module.min.js";
 
 import { getFBO } from "../modules/fbo.js";
@@ -106,8 +107,9 @@ void main() {
   //vec4 color = texture(inputTexture, vUv);//
   vec4 color = rgbShift(inputTexture, vUv, vec2(20.));
   color = softLight(color, vec4(vec3(vignette(vUv, vignetteBoost, vignetteReduction)),1.));
-  color.rgb = finalLevels(color.rgb, vec3(0./255.), vec3(1.49), vec3(239./255.));
-
+  // color.rgb = finalLevels(color.rgb, vec3(10./255.), vec3(1.), vec3(139./255.));
+  color.rgb = ACES_Inv(color.rgb);
+  
   fragmentColor = color + .1*ditherNoise(vUv, .001*time);
 }
 `;
@@ -126,7 +128,6 @@ in vec2 vUv;
 ${blur5}
 
 void main() {
-// fragmentColor = texture(inputTexture, vUv);
   fragmentColor = blur5(inputTexture, vUv, resolution, direction);
 }`;
 
@@ -158,15 +159,7 @@ function Post(params = {}) {
     th /= 2;
     tw = Math.round(tw);
     th = Math.round(th);
-    const blurPass = new ShaderPingPongPass(
-      blurShader
-      // RGBAFormat,
-      // UnsignedByteType,
-      // LinearFilter,
-      // LinearFilter,
-      // ClampToEdgeWrapping,
-      // ClampToEdgeWrapping
-    );
+    const blurPass = new ShaderPingPongPass(blurShader);
     blurPasses.push(blurPass);
     if (params.helper) {
       params.helper.attach(blurPass.fbo, `blur ${i}`);
@@ -190,16 +183,10 @@ function Post(params = {}) {
     fragmentShader: antialiasFragmentShader,
     glslVersion: GLSL3,
   });
-  const antialiasPass = new ShaderPass(
-    antialiasShader
-
-    // RGBAFormat,
-    // UnsignedByteType,
-    // LinearFilter,
-    // LinearFilter,
-    // ClampToEdgeWrapping,
-    // ClampToEdgeWrapping
-  );
+  const antialiasPass = new ShaderPass(antialiasShader, {
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+  });
 
   const finalShader = new RawShaderMaterial({
     uniforms: {
@@ -211,15 +198,10 @@ function Post(params = {}) {
     fragmentShader: finalFragmentShader,
     glslVersion: GLSL3,
   });
-  const finalPass = new ShaderPass(
-    finalShader
-    // RGBAFormat,
-    // UnsignedByteType,
-    // LinearFilter,
-    // LinearFilter,
-    // ClampToEdgeWrapping,
-    // ClampToEdgeWrapping
-  );
+  const finalPass = new ShaderPass(finalShader, {
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+  });
   finalPass.setSize(w, h);
 
   const flipShader = new RawShaderMaterial({
@@ -230,16 +212,10 @@ function Post(params = {}) {
     fragmentShader: flipAlphaFragmentShader,
     glslVersion: GLSL3,
   });
-  const flipPass = new ShaderPass(
-    flipShader
-
-    // RGBAFormat,
-    // UnsignedByteType,
-    // LinearFilter,
-    // LinearFilter,
-    // ClampToEdgeWrapping,
-    // ClampToEdgeWrapping
-  );
+  const flipPass = new ShaderPass(flipShader, {
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+  });
   flipPass.setSize(w, h);
 
   function render(renderer, scene, camera) {
@@ -280,7 +256,7 @@ function Post(params = {}) {
 
     flipPass.render(renderer);
 
-    let offset = 1; //w / size.x;
+    let offset = 1; // w / size.x;
     let tw = w;
     let th = h;
     blurShader.uniforms.inputTexture.value = flipPass.fbo.texture;
