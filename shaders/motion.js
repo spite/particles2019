@@ -32,6 +32,7 @@ void main() {
   vec4 s = texture(inputTexture, vUv);
   float t = nSpeed * time;
   vec3 n = curlNoise(s.xyz*nScale, t);
+  n = normalize(n);
   s.xyz += d.x*dt*speed*n;
  // s.y += 1.*d.x*dt*speed;
   float decayRate = d.z;

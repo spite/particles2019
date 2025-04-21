@@ -79,6 +79,8 @@ class Params {
     this.speed = 0.071;
     this.nScale = 0.084;
     this.nSpeed = 0.01;
+    this.cScale = 1;
+    this.cSpeed = 1;
     this.persistence = 0.084;
     this.decay = 1.06;
     this.spread = 8.747;
@@ -156,7 +158,10 @@ const renderer = new WebGLRenderer({
 renderer.outputColorSpace = SRGBColorSpace;
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setClearColor(0xff00ff, 1);
-renderer.getContext().getExtension("EXT_frag_depth");
+// renderer.getContext().getExtension("EXT_frag_depth");
+renderer.getContext().getExtension("OES_texture_float_linear");
+renderer.getContext().getExtension("OES_texture_half_float_linear");
+renderer.getContext().getExtension("OES_texture_float");
 renderer.debug.checkShaderErrors = true;
 const helper = new FBOHelper(renderer);
 // helper.show(true);
@@ -166,6 +171,8 @@ const post = new Post({ helper });
 const gui = new dat.GUI();
 gui.add(params, "scale", 0.01, 1).listen();
 gui.add(params, "speed", 0, 0.2).listen();
+gui.add(params, "cScale", 0, 1).listen();
+gui.add(params, "cSpeed", -10, 10).listen();
 gui.add(params, "nScale", 0, 1).listen();
 gui.add(params, "nSpeed", 0, 0.2).listen();
 gui.add(params, "persistence", 0, 1).listen();
@@ -223,7 +230,7 @@ img.addEventListener("load", async (e) => {
   }
   colorTexture.needsUpdate = true;
 });
-img.src = "./assets/taip.png";
+img.src = "./assets/pattern.png";
 
 const video = document.createElement("video");
 const videoTexture = new VideoTexture(video);
@@ -266,7 +273,7 @@ shadowCamera.lookAt(scene.position);
 const type = FloatType;
 
 const shadowSize = 4096;
-const shadowBuffer = getFBO(shadowSize, shadowSize, { type });
+const shadowBuffer = getFBO(shadowSize, shadowSize);
 helper.attach(shadowBuffer, "shadow");
 
 const colorFBO = getFBO(1, 1, {
@@ -306,8 +313,8 @@ async function initPositions() {
 
   // const points = pointsOnSphere(size);
   //points.forEach(p => p.multiplyScalar(1));
-  const pointsGeometry = new TorusGeometry(1, 0.25, 18, 100);
-  // const pointsGeometry = new TorusKnotGeometry(0.5, 0.125, 100, 18);
+  // const pointsGeometry = new TorusGeometry(1, 0.25, 18, 100);
+  const pointsGeometry = new TorusKnotGeometry(0.5, 0.125, 100, 18);
   // const pointsGeometry = new BoxGeometry(1, 1, 1);
   // const pointsGeometry = new IcosahedronGeometry(1, 3);
   // const pointsGeometry = model.children[0].geometry;
@@ -324,7 +331,7 @@ async function initPositions() {
     data[ptr] = p.x; // x
     data[ptr + 1] = p.y; // y
     data[ptr + 2] = p.z; // z
-    data[ptr + 3] = 0; //Maf.randomInRange(0, 100); // life
+    data[ptr + 3] = -Maf.randomInRange(0, 100); // life
 
     pData[ptr] = Maf.randomInRange(1, 2); // speed
     pData[ptr + 1] = Maf.randomInRange(0.1, 1.5); // size
@@ -397,6 +404,8 @@ const extraParticlesShader = new RawShaderMaterial({
     positionTexture: { value: particleTexture },
     originTexture: { value: originTexture },
     extraTexture: { value: extraParticleTexture },
+    scale: { value: 1 },
+    speed: { value: 1 },
     time: { value: 0 },
   },
   vertexShader: orthoVertexShader,
@@ -497,17 +506,17 @@ pivot.add(instancedMesh);
 camera.position.set(0, 0, 2);
 camera.lookAt(scene.position);
 
-let runSimulation = false;
+let runSimulation = !false;
 let recording = false;
 let presetRunning = false;
 window.addEventListener("keydown", (e) => {
-  if (e.keyCode === 32) {
+  if (e.code === "Space") {
     runSimulation = !runSimulation;
   }
-  if (e.keyCode === 82) {
+  if (e.code === "KeyR") {
     reset = true;
   }
-  /*if (e.keyCode === 67) {
+  /*if (e.code === 67) {
     if (recording) {
       capturer.stop();
       capturer.save();
@@ -517,23 +526,23 @@ window.addEventListener("keydown", (e) => {
       recording = true;
     }
   }*/
-  if (e.keyCode === 86) {
+  if (e.code === "KeyP") {
     convergePreset(5000);
     presetRunning = true;
   }
-  if (e.keyCode === 66) {
+  if (e.code === "KeyG") {
     regularPreset(5000);
     presetRunning = true;
   }
-  if (e.keyCode === 67) {
+  if (e.code === "KeyZ") {
     resetPreset(100);
     presetRunning = true;
   }
-  if (e.keyCode === 78) {
+  if (e.code === "KeyX") {
     crazyPreset(1000);
     presetRunning = true;
   }
-  if (e.keyCode === 77) {
+  if (e.code === "KeyC") {
     coherentPreset(1000);
     presetRunning = true;
   }
@@ -641,10 +650,13 @@ function render() {
   particlesMotionShader.uniforms.nSpeed.value = params.nSpeed;
   particlesMotionShader.uniforms.decay.value = params.decay;
   particlesMotionShader.uniforms.stay.value = params.stay;
+  extraParticlesShader.uniforms.scale.value = params.cScale;
+  extraParticlesShader.uniforms.speed.value = params.cSpeed;
   particlesMotionShader.uniforms.run.value = runSimulation;
   if (runSimulation) {
     instancedMesh.rotation.y += 0.01 * dt * params.rotationSpeed;
     if (reset) {
+      particlesPass.shader.uniforms.inputTexture.value = originTexture;
       reset = false;
     }
     particlesMotionShader.uniforms.dt.value = dt;
@@ -652,14 +664,12 @@ function render() {
     extraParticlesShader.uniforms.time.value += 0.001 * dt;
     particlesMaterial.uniforms.time.value += 0.00001 * dt;
     particlesPass.render(renderer);
-    particlesPass.shader.uniforms.inputTexture.value =
-      particlesPass.fbos[particlesPass.currentFBO].texture;
-    particlesMaterial.uniforms.positionTexture.value =
-      particlesPass.fbos[particlesPass.currentFBO].texture;
+    particlesPass.shader.uniforms.inputTexture.value = particlesPass.texture;
+    particlesMaterial.uniforms.positionTexture.value = particlesPass.texture;
     particlesShadowMaterial.uniforms.positionTexture.value =
-      particlesPass.fbos[particlesPass.currentFBO].texture;
+      particlesPass.texture;
     extraParticlesPass.shader.uniforms.positionTexture.value =
-      particlesPass.fbos[particlesPass.currentFBO].texture;
+      particlesPass.texture;
     extraParticlesPass.render(renderer);
     invalidated = true;
   }

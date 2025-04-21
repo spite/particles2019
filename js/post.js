@@ -102,14 +102,13 @@ vec3 ACES_Inv(vec3 x) {
 }
 
 void main() {
-   float vignetteBoost = .5;
+  float vignetteBoost = .5;
   float vignetteReduction = .5;
-  //vec4 color = texture(inputTexture, vUv);//
   vec4 color = rgbShift(inputTexture, vUv, vec2(20.));
   color = softLight(color, vec4(vec3(vignette(vUv, vignetteBoost, vignetteReduction)),1.));
-  // color.rgb = finalLevels(color.rgb, vec3(10./255.), vec3(1.), vec3(139./255.));
-  color.rgb = ACES_Inv(color.rgb);
-  
+  color.rgb = finalLevels(color.rgb, vec3(0./255.), vec3(1.49), vec3(239./255.));
+  // color.rgb = ACES_Inv(color.rgb);
+
   fragmentColor = color + .1*ditherNoise(vUv, .001*time);
 }
 `;
