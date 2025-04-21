@@ -309,7 +309,7 @@ const pData = new Float32Array(4 * size);
 const pExtraData = new Float32Array(4 * size);
 
 async function initPositions() {
-  const model = await loadModel("../assets/bunny.obj");
+  // const model = await loadModel("../assets/bunny.obj");
 
   // const points = pointsOnSphere(size);
   //points.forEach(p => p.multiplyScalar(1));
@@ -516,7 +516,7 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyR") {
     reset = true;
   }
-  /*if (e.code === 67) {
+  if (e.code === "KeyV") {
     if (recording) {
       capturer.stop();
       capturer.save();
@@ -525,7 +525,7 @@ window.addEventListener("keydown", (e) => {
       capturer.start();
       recording = true;
     }
-  }*/
+  }
   if (e.code === "KeyP") {
     convergePreset(5000);
     presetRunning = true;
@@ -727,17 +727,17 @@ async function getMedia() {
       video.play();
     };
     return video;
-    //document.body.appendChild(video);
+    document.body.appendChild(video);
   } catch (err) {
     /* handle the error */
   }
 }
 
 const capturer = new CCapture({
-  verbose: false,
+  verbose: !false,
   display: true,
   framerate: 60,
-  motionBlurFrames: 960 / 60,
+  motionBlurFrames: 0, //960 / 60,
   quality: 100,
   format: "webm",
   timeLimit: 25,
