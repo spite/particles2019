@@ -181,7 +181,6 @@ vec3 inverseTransformDirection( in vec3 dir, in mat4 matrix ) {
   return normalize( ( vec4( dir, 0.0 ) * matrix ).xyz );
 }
 
-
 void main() {
   float d = dot(vUv,vUv);
   if(d > 1.) {
@@ -239,9 +238,10 @@ void main() {
   specular *= shadow;
 
   vec3 color = mix(ambientColor*vColor, vColor * lightColor, diffuse) + specular*lightColor;
-  color = max(color, vColor*ambientColor*rim);
+  // color = max(color, vColor * ambientColor * rim);
+  color += rim * ambientColor;
   color = mix(color, ambientColor, clamp(.1*abs(gl_FragCoord.z/gl_FragCoord.w), 0., 1.));
-  fragmentColor = vec4(color + brightness, 1. -brightness);
+  fragmentColor = vec4(color + brightness, 1. - brightness);
 
   // float opacity = ditherBlueNoiseTexture(blend, gl_FragCoord.xy);
   // if(opacity == 1.) {

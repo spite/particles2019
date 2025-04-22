@@ -46,7 +46,7 @@ void main() {
   s.w -= dt*decay*decayRate;
 
   if(s.w<0.) {
-    vec2 oUv = vUv;//vec2(random(s.xy), random(s.yz));
+    vec2 oUv = vUv;
     vec4 o = texture(originTexture,oUv);
     s.xyz = o.xyz;
     s.w += 100.;

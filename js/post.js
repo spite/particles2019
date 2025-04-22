@@ -7,6 +7,7 @@ import {
   ClampToEdgeWrapping,
   GLSL3,
   FloatType,
+  SRGBColorSpace,
   NearestFilter,
 } from "../third_party/three.module.min.js";
 
@@ -134,7 +135,9 @@ function Post(params = {}) {
   let w = 1;
   let h = 1;
 
-  const colorFBO = getFBO(w, h); //, { type: FloatType });
+  const colorFBO = getFBO(w, h, {
+    colorSpace: SRGBColorSpace,
+  }); //, { type: FloatType });
   if (params.helper) {
     params.helper.attach(colorFBO, "color_post");
   }

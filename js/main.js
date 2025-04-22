@@ -9,6 +9,7 @@ import {
   ClampToEdgeWrapping,
   Raycaster,
   WebGLRenderer,
+  BoxGeometry,
   Scene,
   PerspectiveCamera,
   OrthographicCamera,
@@ -45,6 +46,10 @@ import {
   shadow_vs as particlesShadowVertexShader,
   shadow_fs as particlesShadowFragmentShader,
 } from "../shaders/particles.js";
+import {
+  vs as userVertexShader,
+  fs as userFragmentShader,
+} from "../shaders/user.js";
 import { fs as finalFragmentShader } from "../shaders/final.js";
 import {
   getInstancedMeshStandardMaterial,
@@ -149,6 +154,7 @@ const container = document.createElement("div");
 container.id = "container";
 
 const canvas = document.createElement("canvas");
+canvas.style.cursor = "none";
 container.appendChild(canvas);
 const context = canvas.getContext("webgl2");
 const renderer = new WebGLRenderer({
@@ -233,7 +239,7 @@ img.addEventListener("load", async (e) => {
   }
   colorTexture.needsUpdate = true;
 });
-img.src = "./assets/pattern.png";
+img.src = "./assets/mona-lisa.jpg";
 
 const video = document.createElement("video");
 const videoTexture = new VideoTexture(video);
@@ -263,6 +269,8 @@ function onResize() {
 const scene = new Scene();
 const camera = new PerspectiveCamera(75, 1, 0.01, 100);
 const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 controls.addEventListener("change", () => {
   invalidated = true;
 });
@@ -314,18 +322,16 @@ const pExtraData = new Float32Array(4 * size);
 async function initPositions() {
   // const model = await loadModel("../assets/bunny.obj");
 
-  // const points = pointsOnSphere(size);
+  const points = pointsOnSphere(size);
   //points.forEach(p => p.multiplyScalar(1));
   // const pointsGeometry = new TorusGeometry(1, 0.25, 18, 100);
-  const pointsGeometry = new TorusKnotGeometry(0.5, 0.125, 100, 18);
+  // const pointsGeometry = new TorusKnotGeometry(0.5, 0.125, 100, 18);
   // const pointsGeometry = new BoxGeometry(1, 1, 1);
   // const pointsGeometry = new IcosahedronGeometry(1, 3);
   // const pointsGeometry = model.children[0].geometry;
   // pointsGeometry.scale(10, 10, 10).center();
-  const points = randomPointsInGeometry(pointsGeometry, size);
+  // const points = randomPointsInGeometry(pointsGeometry, size);
 
-  const e = 0.1; // * tw;
-  const f = 51.2 / tw;
   for (let i = 0; i < size; i++) {
     const ptr = i * 4;
     const p = points[i];
@@ -371,17 +377,19 @@ helper.attach(extraParticleTexture, "p extra data");
 initPositions();
 
 const userPoint = new Mesh(
-  new IcosahedronGeometry(0.01, 3),
-  new MeshBasicMaterial({ color: 0xff0000 })
+  new IcosahedronGeometry(0.05, 3),
+  new RawShaderMaterial({
+    glslVersion: GLSL3,
+    vertexShader: userVertexShader,
+    fragmentShader: userFragmentShader,
+  })
 );
 scene.add(userPoint);
-// userPoint.position.set(100, 0, 0);
 
 const userPlane = new Mesh(
   new PlaneGeometry(100, 100),
   new MeshBasicMaterial({ color: 0x00ff00 })
 );
-// scene.add(userPlane);
 
 const particlesMotionShader = new RawShaderMaterial({
   uniforms: {
@@ -666,7 +674,10 @@ window.addEventListener("touchmove", function (e) {
   mouse.y = -(e.touches[0].clientY / renderer.domElement.clientHeight) * 2 + 1;
 });
 
+const rotMatrix = new Matrix4();
+
 function render() {
+  controls.update();
   userPlane.lookAt(camera.position);
   raycaster.setFromCamera(mouse, camera);
   var intersects = raycaster.intersectObject(userPlane);
@@ -686,7 +697,13 @@ function render() {
     preset(params.op);
   }*/
   instancedGeometry.instanceCount = ~~params.count;
-  particlesMotionShader.uniforms.center.value.copy(userPoint.position);
+  if (runSimulation) {
+    instancedMesh.rotation.y += 0.01 * dt * params.rotationSpeed;
+  }
+  rotMatrix.makeRotationY(-instancedMesh.rotation.y);
+  particlesMotionShader.uniforms.center.value
+    .copy(userPoint.position)
+    .applyMatrix4(rotMatrix);
   particlesMotionShader.uniforms.persistence.value = params.persistence;
   particlesMotionShader.uniforms.speed.value = params.speed;
   particlesMotionShader.uniforms.scale.value = params.scale;
@@ -698,7 +715,6 @@ function render() {
   extraParticlesShader.uniforms.speed.value = params.cSpeed;
   particlesMotionShader.uniforms.run.value = runSimulation;
   if (runSimulation) {
-    instancedMesh.rotation.y += 0.01 * dt * params.rotationSpeed;
     if (reset) {
       particlesPass.shader.uniforms.inputTexture.value = originTexture;
       reset = false;
@@ -729,12 +745,14 @@ function render() {
   particlesShadowMaterial.uniforms.size.value = params.size;
   finalPass.shader.uniforms.time.value = t;
   if (invalidated) {
+    userPoint.visible = false;
     instancedMesh.material = particlesShadowMaterial;
     renderer.setRenderTarget(shadowBuffer);
     renderer.setClearColor(0, 1);
     renderer.render(scene, shadowCamera);
     renderer.setRenderTarget(null);
     instancedMesh.material = particlesMaterial;
+    userPoint.visible = true;
     particlesMaterial.uniforms.shadowMatrix.value.copy(biasMatrix);
     particlesMaterial.uniforms.shadowMatrix.value.multiply(
       shadowCamera.projectionMatrix
