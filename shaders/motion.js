@@ -18,6 +18,7 @@ uniform float decay;
 uniform bool run;
 uniform float dt;
 uniform float stay;
+uniform vec3 center;
 
 in vec2 vUv;
 
@@ -31,12 +32,19 @@ void main() {
   vec4 d = texture(particleTexture, vUv);
   vec4 s = texture(inputTexture, vUv);
   float t = nSpeed * time;
+  
   vec3 n = curlNoise(s.xyz*nScale, t);
-  n = normalize(n);
-  s.xyz += d.x*dt*speed*n;
- // s.y += 1.*d.x*dt*speed;
+  n = .1 * normalize(n);
+
+  vec3 dirToCenter = -(center - s.xyz);
+  float distToCenter = clamp(.0001 / pow(length(dirToCenter),20.), 0., 1.);
+  dirToCenter = 1. * normalize(dirToCenter);
+  vec3 dir = mix(n, dirToCenter, distToCenter);
+  s.xyz += d.x * dt * speed * dir;
+
   float decayRate = d.z;
   s.w -= dt*decay*decayRate;
+
   if(s.w<0.) {
     vec2 oUv = vUv;//vec2(random(s.xy), random(s.yz));
     vec4 o = texture(originTexture,oUv);

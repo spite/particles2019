@@ -47,8 +47,8 @@ void main(){
   opacity = .1 + .9 * (d.x-1.);
   vColor = t.rgb;
   float f = smoothstep(0.,1.,parabola(clamp(particle.w/100.,0.,1.),1.));
-  vSize = d.y*size*f;
-  vec3 offsetPosition = scale*.1*particle.xyz;
+  vSize = .01 * d.y * size * f;
+  vec3 offsetPosition = scale*particle.xyz;
   vUv = 2. * position.xy ;
   vCenter = vec4( offsetPosition, 1.0 );
   vPosition = modelViewMatrix * vec4( offsetPosition, 1.0 ) + vSize*vec4(position,1.);
@@ -85,8 +85,8 @@ void main(){
   vec4 d = texture(particleTexture, offsetUv);
   opacity = .1 + .9 * (d.x-1.);
   float f = smoothstep(0.,.25,parabola(particle.w/100.,1.));
-  float vSize = d.y*size*f;
-  vec3 offsetPosition = scale*.1*particle.xyz;
+  float vSize = .01 * d.y * size * f;
+  vec3 offsetPosition = scale*particle.xyz;
   vUv = 2. * position.xy ;
   vec4 vPosition = modelViewMatrix * vec4( offsetPosition, 1.0 ) + vSize*vec4(position,1.);
   gl_Position = projectionMatrix * vPosition;
@@ -189,16 +189,12 @@ void main() {
   }
 
   d = clamp(d, 0., 1.);
-  float z = gl_FragCoord.z / gl_FragCoord.w;
-  z += .95;
-  z = (exp(z) - 1.)-(exp(1.)-1.);
+  float z = gl_FragCoord.z;
   vec2 bnuv = gl_FragCoord.xy;
   float dn = ditherBlueNoiseTexture(z, bnuv) ;
-  float dn2 = 0.;//ditherBlueNoiseTexture(opacity, bnuv) ;
-  if(dn2 == 1.||dn==1. ) {
+  // float dn = ditherBlueNoiseTexture(z, bnuv) ;
+  if(dn == 1.) {//||dn==1. ) {
     discard;
-    //fragmentColor = vec4(dn,dn,dn,1.);
-    //return;
   }
   // if(dither8x8(gl_FragCoord.xy,10.*z) == 0.){
   //   discard;

@@ -1,11 +1,13 @@
 import {
   RawShaderMaterial,
   Vector2,
+  Vector3,
   RGBAFormat,
   Group,
   UnsignedByteType,
   LinearFilter,
   ClampToEdgeWrapping,
+  Raycaster,
   WebGLRenderer,
   Scene,
   PerspectiveCamera,
@@ -29,6 +31,7 @@ import {
   GLSL3,
   SRGBColorSpace,
   NoColorSpace,
+  IcosahedronGeometry,
 } from "../third_party/three.module.min.js";
 import { Post } from "../js/post.js";
 import { ShaderPingPongPass } from "../modules/shader-ping-pong-pass.js";
@@ -77,7 +80,7 @@ class Params {
   constructor() {
     this.usePost = true;
     this.speed = 0.071;
-    this.nScale = 0.084;
+    this.nScale = 0.84;
     this.nSpeed = 0.01;
     this.cScale = 1;
     this.cSpeed = 1;
@@ -86,7 +89,7 @@ class Params {
     this.spread = 8.747;
     this.jitter = 3;
     this.blend = 0;
-    this.size = 0.02;
+    this.size = 1;
     this.scale = 0.2;
     this.bias = 0.019;
     this.stay = 0;
@@ -116,15 +119,15 @@ params.time = 1;
 
 params.scale = 0.2;
 params.speed = 0.071;
-params.nScale = 0.084;
+params.nScale = 0.84;
 params.nSpeed = 0.01;
 params.persistence = 0.084;
 params.decay = 1.06;
 
-params.scale = 0.2;
+params.scale = 1;
 params.speed = 0.071;
-params.nScale = 0.027;
-params.nSpeed = 0.003;
+params.nScale = 1;
+params.nSpeed = 0.0003;
 params.persistence = 0.059;
 params.decay = 0.5;
 
@@ -173,12 +176,12 @@ gui.add(params, "scale", 0.01, 1).listen();
 gui.add(params, "speed", 0, 0.2).listen();
 gui.add(params, "cScale", 0, 1).listen();
 gui.add(params, "cSpeed", -10, 10).listen();
-gui.add(params, "nScale", 0, 1).listen();
+gui.add(params, "nScale", 0, 10).listen();
 gui.add(params, "nSpeed", 0, 0.2).listen();
 gui.add(params, "persistence", 0, 1).listen();
 gui.add(params, "decay", 0, 2).listen();
 gui.add(params, "blend", 0, 1).listen();
-gui.add(params, "size", 0, 0.2).listen();
+gui.add(params, "size", 0, 2).listen();
 gui.add(params, "spread", 0, 10).listen();
 gui.add(params, "jitter", 0, 10).listen();
 gui.add(params, "bias", -0.1, 0.1).listen();
@@ -326,7 +329,7 @@ async function initPositions() {
   for (let i = 0; i < size; i++) {
     const ptr = i * 4;
     const p = points[i];
-    p.multiplyScalar(f * tw);
+    // p.multiplyScalar(f * tw);
 
     data[ptr] = p.x; // x
     data[ptr + 1] = p.y; // y
@@ -367,6 +370,19 @@ helper.attach(extraParticleTexture, "p extra data");
 
 initPositions();
 
+const userPoint = new Mesh(
+  new IcosahedronGeometry(0.01, 3),
+  new MeshBasicMaterial({ color: 0xff0000 })
+);
+scene.add(userPoint);
+// userPoint.position.set(100, 0, 0);
+
+const userPlane = new Mesh(
+  new PlaneGeometry(100, 100),
+  new MeshBasicMaterial({ color: 0x00ff00 })
+);
+// scene.add(userPlane);
+
 const particlesMotionShader = new RawShaderMaterial({
   uniforms: {
     colorTexture: { value: colorTexture },
@@ -384,6 +400,7 @@ const particlesMotionShader = new RawShaderMaterial({
     stay: { value: 0 },
     run: { value: true },
     dt: { value: 0 },
+    center: { value: userPoint.position },
   },
   vertexShader: orthoVertexShader,
   fragmentShader: particlesMotionFragmentShader,
@@ -631,7 +648,33 @@ function coherentPreset(t) {
   vars["size"].to(0.02, t, "InQuint");
 }
 
+const raycaster = new Raycaster();
+const mouse = new Vector2();
+
+window.addEventListener("mousemove", function (e) {
+  mouse.x = (e.clientX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y = -(e.clientY / renderer.domElement.clientHeight) * 2 + 1;
+});
+
+renderer.domElement.addEventListener("touchmove", function (e) {
+  mouse.x = (e.touches[0].clientX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y = -(e.touches[0].clientY / renderer.domElement.clientHeight) * 2 + 1;
+});
+
+window.addEventListener("touchmove", function (e) {
+  mouse.x = (e.touches[0].clientX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y = -(e.touches[0].clientY / renderer.domElement.clientHeight) * 2 + 1;
+});
+
 function render() {
+  userPlane.lookAt(camera.position);
+  raycaster.setFromCamera(mouse, camera);
+  var intersects = raycaster.intersectObject(userPlane);
+  if (intersects.length > 0) {
+    const p = intersects[0].point;
+    userPoint.position.copy(p);
+  }
+
   const t = performance.now() - startTime;
   const dt = (params.time * (t - prevTime)) / (1000 / 60);
   prevTime = t;
@@ -643,6 +686,7 @@ function render() {
     preset(params.op);
   }*/
   instancedGeometry.instanceCount = ~~params.count;
+  particlesMotionShader.uniforms.center.value.copy(userPoint.position);
   particlesMotionShader.uniforms.persistence.value = params.persistence;
   particlesMotionShader.uniforms.speed.value = params.speed;
   particlesMotionShader.uniforms.scale.value = params.scale;

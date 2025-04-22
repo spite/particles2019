@@ -23,7 +23,7 @@ void main() {
   vec4 e = texture(extraTexture, vUv);
   vec4 d = texture(positionTexture, vUv);
   vec3 offset = vec3(.234,.656,.234);
-  float n = mod(noise3d(offset+((o.xyz + d.xyz) * scale)/500. + vec3(0.,0.,time * speed)),1.);
+  float n = mod(noise3d(offset+((o.xyz + d.xyz) * scale)/5. + vec3(0.,0.,time * speed)),1.);
   fragmentColor = vec4(n,e.yzw);
 }`;
 
