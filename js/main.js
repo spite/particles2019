@@ -676,7 +676,7 @@ function render() {
   }
 
   const t = performance.now() - startTime;
-  const dt = (params.time * (t - prevTime)) / (1000 / 60);
+  const dt = params.time * Math.min(1000 / 60, (t - prevTime) / (1000 / 60));
   prevTime = t;
   if (presetRunning) {
     Object.keys(vars).forEach((k) => (params[k] = vars[k].value));
