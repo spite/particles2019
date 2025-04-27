@@ -18,6 +18,7 @@ uniform float decay;
 uniform bool run;
 uniform float dt;
 uniform float stay;
+uniform float scale;
 uniform vec3 center;
 
 in vec2 vUv;
@@ -34,9 +35,11 @@ void main() {
   float t = nSpeed * time;
   
   vec3 n = curlNoise(s.xyz*nScale, t);
-  n = .1 * normalize(n);
+  // n = .1 * normalize(n);
+  n = .05 * n;
 
-  vec3 dirToCenter = -(center - s.xyz);
+  vec3 c = center / scale;
+  vec3 dirToCenter = -(c - s.xyz);
   float distToCenter = clamp(.0001 / pow(length(dirToCenter),20.), 0., 1.);
   dirToCenter = 1. * normalize(dirToCenter);
   vec3 dir = mix(n, dirToCenter, distToCenter);

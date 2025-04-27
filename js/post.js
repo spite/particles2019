@@ -108,7 +108,9 @@ void main() {
   vec4 color = rgbShift(inputTexture, vUv, vec2(20.));
   color = softLight(color, vec4(vec3(vignette(vUv, vignetteBoost, vignetteReduction)),1.));
   color.rgb = finalLevels(color.rgb, vec3(0./255.), vec3(1.49), vec3(239./255.));
-  // color.rgb = ACES_Inv(color.rgb);
+  // color.rgb = ACES(color.rgb);
+  // color.rgb = pow(color.rgb, vec3(2.2));
+  // color.rgb *= 1.5;
 
   fragmentColor = color + .1*ditherNoise(vUv, .001*time);
 }
@@ -137,7 +139,7 @@ function Post(params = {}) {
 
   const colorFBO = getFBO(w, h, {
     colorSpace: SRGBColorSpace,
-  }); //, { type: FloatType });
+  });
   if (params.helper) {
     params.helper.attach(colorFBO, "color_post");
   }
@@ -258,7 +260,7 @@ function Post(params = {}) {
 
     flipPass.render(renderer);
 
-    let offset = 1; // w / size.x;
+    let offset = 1;
     let tw = w;
     let th = h;
     blurShader.uniforms.inputTexture.value = flipPass.fbo.texture;

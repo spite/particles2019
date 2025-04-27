@@ -239,7 +239,7 @@ img.addEventListener("load", async (e) => {
   }
   colorTexture.needsUpdate = true;
 });
-img.src = "./assets/mona-lisa.jpg";
+img.src = "./assets/rainbow.jpg";
 
 const video = document.createElement("video");
 const videoTexture = new VideoTexture(video);
